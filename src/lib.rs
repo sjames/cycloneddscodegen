@@ -90,7 +90,7 @@ pub fn generate_bindings(header: Vec<String>) {
         .blacklist_type("dds_free_fn_t")
         .blacklist_type("dds_instance_handle_t")
         .blacklist_type("dds_domainid_t")
-        .raw_line("use cyclonedds_rs::dds_topic::dds_topic_descriptor_t;");
+        .raw_line("use cyclonedds_sys::dds_topic_descriptor_t;");
 
     let gen = bindings.generate().expect("Unable to generate bindings");
 
