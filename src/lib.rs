@@ -102,7 +102,7 @@ pub fn generate_bindings(path_to_idl: &Vec<&str>) {
 
         if let Ok(path) = env::var("OUT_DIR") {
             let out_path = PathBuf::from(path);
-            println!("Out path:{}",&out_path.join("bindings.rs"));
+            println!("Out path:{:?}",&out_path.join("bindings.rs"));
             let mut of = OpenOptions::new()
                 .append(true)
                 .write(true)
