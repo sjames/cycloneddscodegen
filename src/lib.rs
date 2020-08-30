@@ -24,6 +24,7 @@ use syn::{ForeignItem, Item, Type, };
 
 
 use std::process::Command;
+#[cfg(feature = "rust_codegen")]
 use cyclonedds_idlc::{IdlLoader, Configuration, generate_with_loader};
 
 /*
@@ -46,7 +47,7 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
         println!("IDLC JAR {:?}", &idlc_jar);
         let mut paths = Vec::new();
 
-        for filename in path_to_idl {
+        for filename in &path_to_idl {
             Command::new("java")
                 .arg("-classpath")
                 .arg(&idlc_jar)
@@ -73,7 +74,11 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
             builder.file(&generated_c);
         }
         builder.compile(&lib_name);
+        #[cfg(not(feature = "rust_codegen"))]
         generate_bindings(generated_files);
+        #[cfg(feature = "rust_codegen")]
+        generate_bindings(&path_to_idl);
+
     } else {
         panic!(
             "Did not find environment variable CYCLONEDDS_IDLC_JAR. Please set this and try again"
@@ -81,25 +86,32 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
     }
 }
 
-pub fn generate_rust_bindings(path_to_idl:&Path) {
-    let search_path = vec![String::from(path_to_idl.parent().unwrap().to_str().unwrap())];
-    let mut loader = Loader::new(search_path);
-    let data = load_from(path_to_idl.parent().unwrap(),path_to_idl.file_name().unwrap().to_str().unwrap()).unwrap();
+#[cfg(feature = "rust_codegen")]
+pub fn generate_bindings(path_to_idl:&Vec<&str>) {
+    
 
     let config = Configuration::default();
 
-    if let Ok(path) = env::var("OUT_DIR") {
-        let out_path = PathBuf::from(path);
-        let mut of = File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing");
+    for filename in path_to_idl {
+        let path_to_idl = PathBuf::from(filename);
+        let search_path = vec![String::from(path_to_idl.parent().unwrap().to_str().unwrap())];
+        let mut loader = Loader::new(search_path);
+        let data = load_from(path_to_idl.parent().unwrap(),path_to_idl.file_name().unwrap().to_str().unwrap()).unwrap();
+
+        if let Ok(path) = env::var("OUT_DIR") {
+            let out_path = PathBuf::from(path);
+            let mut of = File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing");
             let res = generate_with_loader(&mut of, &mut loader, &config, &data);
-    } else {
-        let res = generate_with_loader(&mut std::io::stdout(), &mut loader, &config, &data);
-        println!("OUT_DIR not set, not generating bindings");
+        } else {
+            let res = generate_with_loader(&mut std::io::stdout(), &mut loader, &config, &data);
+        };
     }
+
+    
 
 }
 
-
+#[cfg(not(feature = "rust_codegen"))]
 pub fn generate_bindings(header: Vec<String>) {
     let mut bindings = bindgen::Builder::default();
     for h in header {
@@ -218,25 +230,13 @@ fn write_trait_impls(bindings: String) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    #[test]
-    fn test_gen() {
-        let mut ids = vec!["test/HelloWorldData.idl"];
-
-        generate_and_compile_datatypes(ids);
-    }
-}
-
-
-//
+#[cfg(feature = "rust_codegen")]
 #[derive(Debug, Clone, Default)]
 struct Loader {
     search_path: Vec<String>,
 }
-
+#[cfg(feature = "rust_codegen")]
 fn load_from(prefix: &std::path::Path, filename: &str) -> Result<String, Error> {
     let fullname = prefix.join(filename);
 
@@ -247,7 +247,7 @@ fn load_from(prefix: &std::path::Path, filename: &str) -> Result<String, Error> 
 
     return Ok(data);
 }
-
+#[cfg(feature = "rust_codegen")]
 impl Loader {
     pub fn new(search_path: Vec<String>) -> Loader {
         Loader {
@@ -255,7 +255,7 @@ impl Loader {
         }
     }
 }
-
+#[cfg(feature = "rust_codegen")]
 impl IdlLoader for Loader {
     fn load(&self, filename: &str) -> Result<String, Error> {
         for prefix in &self.search_path {
@@ -268,3 +268,17 @@ impl IdlLoader for Loader {
         Err(Error::from(ErrorKind::NotFound))
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gen() {
+        let mut ids = vec!["test/HelloWorldData.idl"];
+
+        generate_and_compile_datatypes(ids);
+    }
+}
+

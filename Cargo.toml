@@ -1,13 +1,16 @@
 [package]
 name = "cycloneddscodegen"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Sojan James <sojan.james@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+rust_codegen = ["cyclonedds-idlc"]
+
 [dependencies]
 cc = "1.0"
 bindgen = "0.51"
 syn = {version = "1.0", features = ["full", "printing"]}
-cyclonedds-idlc = { git = "https://github.com/sjames/cyclonedds-idlc.git"}
+cyclonedds-idlc = { git = "https://github.com/sjames/cyclonedds-idlc.git", optional = true}
