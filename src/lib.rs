@@ -18,10 +18,13 @@ use std::env;
 use std::fs::{ File};
 use std::io::prelude::*;
 use std::io::LineWriter;
-use std::path::PathBuf;
+use std::io::{Error, ErrorKind};
+use std::path::{PathBuf,Path};
 use syn::{ForeignItem, Item, Type, };
 
+
 use std::process::Command;
+use cyclonedds_idlc::{IdlLoader, Configuration, generate_with_loader};
 
 /*
 fn main() {
@@ -77,6 +80,25 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
         );
     }
 }
+
+pub fn generate_rust_bindings(path_to_idl:&Path) {
+    let search_path = vec![String::from(path_to_idl.parent().unwrap().to_str().unwrap())];
+    let mut loader = Loader::new(search_path);
+    let data = load_from(path_to_idl.parent().unwrap(),path_to_idl.file_name().unwrap().to_str().unwrap()).unwrap();
+
+    let config = Configuration::default();
+
+    if let Ok(path) = env::var("OUT_DIR") {
+        let out_path = PathBuf::from(path);
+        let mut of = File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing");
+            let res = generate_with_loader(&mut of, &mut loader, &config, &data);
+    } else {
+        let res = generate_with_loader(&mut std::io::stdout(), &mut loader, &config, &data);
+        println!("OUT_DIR not set, not generating bindings");
+    }
+
+}
+
 
 pub fn generate_bindings(header: Vec<String>) {
     let mut bindings = bindgen::Builder::default();
@@ -205,5 +227,44 @@ mod tests {
         let mut ids = vec!["test/HelloWorldData.idl"];
 
         generate_and_compile_datatypes(ids);
+    }
+}
+
+
+//
+#[derive(Debug, Clone, Default)]
+struct Loader {
+    search_path: Vec<String>,
+}
+
+fn load_from(prefix: &std::path::Path, filename: &str) -> Result<String, Error> {
+    let fullname = prefix.join(filename);
+
+    let mut file = File::open(fullname)?;
+    let mut data = String::new();
+
+    file.read_to_string(&mut data)?;
+
+    return Ok(data);
+}
+
+impl Loader {
+    pub fn new(search_path: Vec<String>) -> Loader {
+        Loader {
+            search_path: search_path,
+        }
+    }
+}
+
+impl IdlLoader for Loader {
+    fn load(&self, filename: &str) -> Result<String, Error> {
+        for prefix in &self.search_path {
+            let prefix_path = std::path::Path::new(&prefix);
+            match load_from(&prefix_path, filename) {
+                Ok(data) => return Ok(data),
+                _ => continue,
+            }
+        }
+        Err(Error::from(ErrorKind::NotFound))
     }
 }
