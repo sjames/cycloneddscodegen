@@ -15,17 +15,16 @@
 */
 
 use std::env;
-use std::fs::{ File};
+use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::io::LineWriter;
 use std::io::{Error, ErrorKind};
-use std::path::{PathBuf,Path};
-use syn::{ForeignItem, Item, Type, };
+use std::path::{Path, PathBuf};
+use syn::{ForeignItem, Item, Type};
 
-
-use std::process::Command;
 #[cfg(feature = "rust_codegen")]
-use cyclonedds_idlc::{IdlLoader, Configuration, generate_with_loader};
+use cyclonedds_idlc::{generate_with_loader, Configuration, IdlLoader};
+use std::process::Command;
 
 /*
 fn main() {
@@ -78,7 +77,6 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
         generate_bindings(generated_files);
         #[cfg(feature = "rust_codegen")]
         generate_bindings(&path_to_idl);
-
     } else {
         panic!(
             "Did not find environment variable CYCLONEDDS_IDLC_JAR. Please set this and try again"
@@ -87,28 +85,33 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
 }
 
 #[cfg(feature = "rust_codegen")]
-pub fn generate_bindings(path_to_idl:&Vec<&str>) {
-    
-
+pub fn generate_bindings(path_to_idl: &Vec<&str>) {
     let config = Configuration::default();
 
     for filename in path_to_idl {
         let path_to_idl = PathBuf::from(filename);
-        let search_path = vec![String::from(path_to_idl.parent().unwrap().to_str().unwrap())];
+        let search_path = vec![String::from(
+            path_to_idl.parent().unwrap().to_str().unwrap(),
+        )];
         let mut loader = Loader::new(search_path);
-        let data = load_from(path_to_idl.parent().unwrap(),path_to_idl.file_name().unwrap().to_str().unwrap()).unwrap();
+        let data = load_from(
+            path_to_idl.parent().unwrap(),
+            path_to_idl.file_name().unwrap().to_str().unwrap(),
+        )
+        .unwrap();
 
         if let Ok(path) = env::var("OUT_DIR") {
             let out_path = PathBuf::from(path);
-            let mut of = File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing");
+            let mut of = OpenOptions::new()
+                .append(true)
+                .open(std::path::Path::new(&out_path.join("bindings.rs")))
+                .expect("Unable to open bindings.rs for write");
+            //let mut of = File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing");
             let res = generate_with_loader(&mut of, &mut loader, &config, &data);
         } else {
             let res = generate_with_loader(&mut std::io::stdout(), &mut loader, &config, &data);
         };
     }
-
-    
-
 }
 
 #[cfg(not(feature = "rust_codegen"))]
@@ -230,7 +233,6 @@ fn write_trait_impls(bindings: String) {
     }
 }
 
-
 #[cfg(feature = "rust_codegen")]
 #[derive(Debug, Clone, Default)]
 struct Loader {
@@ -269,7 +271,6 @@ impl IdlLoader for Loader {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -281,4 +282,3 @@ mod tests {
         generate_and_compile_datatypes(ids);
     }
 }
-
