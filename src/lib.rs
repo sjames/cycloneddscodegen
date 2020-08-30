@@ -102,9 +102,11 @@ pub fn generate_bindings(path_to_idl: &Vec<&str>) {
 
         if let Ok(path) = env::var("OUT_DIR") {
             let out_path = PathBuf::from(path);
+            println!("Out path:{}",&out_path.join("bindings.rs"));
             let mut of = OpenOptions::new()
                 .append(true)
-                .open(std::path::Path::new(&out_path.join("bindings.rs")))
+                .write(true)
+                .open(&out_path.join("bindings.rs"))
                 .expect("Unable to open bindings.rs for write");
             //let mut of = File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing");
             let res = generate_with_loader(&mut of, &mut loader, &config, &data);
