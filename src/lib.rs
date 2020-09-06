@@ -38,11 +38,24 @@ fn main() {
 }
 */
 
+pub fn get_idlc_jar() -> Option<PathBuf> {
+    if let Ok(idlc_path) = env::var("CYCLONEDDS_IDLC_JAR") {
+        Some(PathBuf::from(idlc_path))    
+    } else {
+        let cdds_installed_jar = Path::new("/usr/local/lib/cmake/CycloneDDS/idlc/idlc-jar-with-dependencies.jar");
+        if cdds_installed_jar.exists() {
+            println!("Using CycloneDDS installed IDLC Jar. Set CYCLONEDDS_IDLC_JAR environment variable to override");
+            Some(cdds_installed_jar.into())
+        } else {
+            None
+        }
+    }
+}
+
 pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
-    if let Ok(idlc_path) = env::var("CYCLONEDDS_IDLC_JAR") {
-        let idlc_jar = PathBuf::from(idlc_path);
+    if let Some(idlc_jar) = get_idlc_jar() {
         println!("IDLC JAR {:?}", &idlc_jar);
         let mut paths = Vec::new();
 
@@ -78,6 +91,7 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
         #[cfg(feature = "rust_codegen")]
         generate_bindings(&path_to_idl);
     } else {
+
         panic!(
             "Did not find environment variable CYCLONEDDS_IDLC_JAR. Please set this and try again"
         );
