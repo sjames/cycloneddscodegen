@@ -102,6 +102,8 @@ pub fn generate_and_compile_datatypes(path_to_idl: Vec<&str>) {
 pub fn generate_bindings(path_to_idl: &Vec<&str>) {
     let config = Configuration::default();
 
+    let mut first_iteration = true;
+
     for filename in path_to_idl {
         let path_to_idl = PathBuf::from(filename);
         let search_path = vec![String::from(
@@ -117,12 +119,19 @@ pub fn generate_bindings(path_to_idl: &Vec<&str>) {
         if let Ok(path) = env::var("OUT_DIR") {
             let out_path = PathBuf::from(path);
             println!("Out path:{:?}",&out_path.join("bindings.rs"));
-            let mut of = OpenOptions::new()
-                .append(true)
-                .create(true)
-                .open(&out_path.join("bindings.rs"))
-                .expect("Unable to open bindings.rs for write");
-            //let mut of = File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing");
+            let mut of = 
+                if !first_iteration {
+                    let mut of = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(&out_path.join("bindings.rs"))
+                        .expect("Unable to open bindings.rs for write");
+
+                    of
+                } else {
+                    first_iteration = false;
+                    File::create(std::path::Path::new(&out_path.join("bindings.rs"))).expect("Unable to open bindings.rs for writing")
+                };
             let res = generate_with_loader(&mut of, &mut loader, &config, &data);
         } else {
             let res = generate_with_loader(&mut std::io::stdout(), &mut loader, &config, &data);
